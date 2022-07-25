@@ -173,6 +173,7 @@ function App(props) {
 
   const [injectedProvider, setInjectedProvider] = useState();
   const [address, setAddress] = useState();
+  const [amountToStake, setAmountToStake] = useState("");
 
   const logoutOfWeb3Modal = async () => {
     await web3Modal.clearCachedProvider();
@@ -271,6 +272,16 @@ function App(props) {
   // ** Listen for when the contract has been 'completed'
   const complete = useContractReader(readContracts, "ExampleExternalContract", "completed");
   console.log("✅ complete:", complete);
+
+  // ** keep track of a variable from the contract in the local React state:
+  const rewardRatePerSecond = useContractReader(readContracts, "Staker", "rewardRatePerBlock");
+  console.log("💸 Reward Rate Per Second:", rewardRatePerSecond);
+
+  const claimPeriodLeft = useContractReader(readContracts, "Staker", "claimPeriodLeft");
+  console.log("⏳ Claim Period Left:", claimPeriodLeft);
+
+  const withdrawalTimeLeft = useContractReader(readContracts, "Staker", "withdrawalTimeLeft");
+  console.log("⏳ Withdrawal Time Left:", withdrawalTimeLeft);
 
   const exampleExternalContractBalance = useBalance(
     localProvider,
@@ -516,9 +527,19 @@ function App(props) {
               <Address value={readContracts && readContracts.Staker && readContracts.Staker.address} />
             </div>
 
-            <div style={{ padding: 8, marginTop: 32 }}>
-              <div>Timeleft:</div>
-              {timeLeft && humanizeDuration(timeLeft.toNumber() * 1000)}
+            <div style={{ padding: 8, marginTop: 16 }}>
+              <div>Reward Rate Per Second:</div>
+              <Balance balance={rewardRatePerSecond} fontSize={64} /> ETH
+            </div>
+
+            <div style={{ padding: 8, marginTop: 16, fontWeight: "bold" }}>
+              <div>Claim Period Left:</div>
+              {claimPeriodLeft && humanizeDuration(claimPeriodLeft.toNumber() * 1000)}
+            </div>
+
+            <div style={{ padding: 8, marginTop: 16, fontWeight: "bold" }}>
+              <div>Withdrawal Period Left:</div>
+              {withdrawalTimeLeft && humanizeDuration(withdrawalTimeLeft.toNumber() * 1000)}
             </div>
 
             <div style={{ padding: 8 }}>
@@ -553,14 +574,28 @@ function App(props) {
               </Button>
             </div>
 
+            <input
+              type="text"
+              placeholder="Amount of Ether to stake"
+              value={amountToStake}
+              onChange={e => {
+                setAmountToStake(e.target.value);
+              }}
+              style={{ border: "1px dotted grey" }}
+            />
+
             <div style={{ padding: 8 }}>
               <Button
                 type={balanceStaked ? "success" : "primary"}
                 onClick={() => {
-                  tx(writeContracts.Staker.stake({ value: ethers.utils.parseEther("0.5") }));
+                  if (amountToStake === "") {
+                    alert("You must enter an amount of ether to stake!");
+                    return;
+                  }
+                  tx(writeContracts.Staker.stake({ value: ethers.utils.parseEther(amountToStake) }));
                 }}
               >
-                🥩 Stake 0.5 ether!
+                🥩 Stake Ether!
               </Button>
             </div>
 
@@ -569,21 +604,6 @@ function App(props) {
                 this <Contract/> component will automatically parse your ABI
                 and give you a form to interact with it locally
             */}
-
-            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
-              <div>Stake Events:</div>
-              <List
-                dataSource={stakeEvents}
-                renderItem={item => {
-                  return (
-                    <List.Item key={item.blockNumber}>
-                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> =>
-                      <Balance balance={item.args[1]} />
-                    </List.Item>
-                  );
-                }}
-              />
-            </div>
 
             {/* uncomment for a second contract:
             <Contract
